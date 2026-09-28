@@ -82,6 +82,15 @@ export interface TimelineSummary {
   unproductiveMinutes: number;
   deductedMinutes: number;
   offlineMinutes: number;
+  totalSeconds?: number;
+  trackedSeconds?: number;
+  activeSeconds?: number;
+  idleSeconds?: number;
+  deductedSeconds?: number;
+  payableSeconds?: number;
+  unproductiveSeconds?: number;
+  productiveSeconds?: number;
+  neutralSeconds?: number;
 }
 
 export interface AppUsageRow {

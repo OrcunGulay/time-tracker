@@ -7,7 +7,7 @@ import { UserSelect } from '@/components/UserSelect';
 import { Badge, Card, EmptyState, ErrorBanner, Field, Input, Select, Spinner, StatCard, Table } from '@/components/ui';
 import { useAuthUser } from '@/hooks/useAuth';
 import { useApi } from '@/hooks/useApi';
-import { CATEGORY_LABEL, formatClock, formatDuration, TIMELINE_STATE_LABEL, todayIso } from '@/lib/format';
+import { CATEGORY_LABEL, formatClock, formatDuration, formatHours, TIMELINE_STATE_LABEL, todayIso } from '@/lib/format';
 import type { TimelineSlice } from '@/lib/types';
 
 const STATE_TONE: Record<TimelineSlice['state'], 'green' | 'amber' | 'rose' | 'violet' | 'slate'> = {
@@ -75,16 +75,25 @@ export default function TimelinePage() {
       {error && <ErrorBanner message={error} onRetry={refresh} />}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Calisiyor" value={formatDuration((summary?.activeMinutes ?? 0) * 60)} tone="success" />
-        <StatCard label="Bosta" value={formatDuration((summary?.idleMinutes ?? 0) * 60)} tone="warning" />
+        <StatCard
+          label="Odenebilir sure"
+          value={formatHours(summary?.payableSeconds ?? ((summary?.activeMinutes ?? 0) * 60))}
+          hint={formatDuration(summary?.payableSeconds ?? ((summary?.activeMinutes ?? 0) * 60))}
+          tone="success"
+        />
+        <StatCard
+          label="Bosta"
+          value={formatDuration(summary?.idleSeconds ?? ((summary?.idleMinutes ?? 0) * 60))}
+          tone="warning"
+        />
         <StatCard
           label="Uretken degil"
-          value={formatDuration((summary?.unproductiveMinutes ?? 0) * 60)}
+          value={formatDuration(summary?.unproductiveSeconds ?? ((summary?.unproductiveMinutes ?? 0) * 60))}
           tone="danger"
         />
         <StatCard
           label="Silinen blok"
-          value={formatDuration((summary?.deductedMinutes ?? 0) * 60)}
+          value={formatDuration(summary?.deductedSeconds ?? ((summary?.deductedMinutes ?? 0) * 60))}
           hint="Gizlilik protokolu"
         />
         <StatCard label="Cevrimdisi" value={formatDuration((summary?.offlineMinutes ?? 0) * 60)} />

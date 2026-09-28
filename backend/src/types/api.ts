@@ -176,6 +176,23 @@ export interface TimelineSlice {
   category: ProductivityCategory;
 }
 
+export interface TimelineSummary {
+  activeMinutes: number;
+  idleMinutes: number;
+  unproductiveMinutes: number;
+  deductedMinutes: number;
+  offlineMinutes: number;
+  totalSeconds?: number;
+  trackedSeconds?: number;
+  activeSeconds?: number;
+  idleSeconds?: number;
+  deductedSeconds?: number;
+  payableSeconds?: number;
+  unproductiveSeconds?: number;
+  productiveSeconds?: number;
+  neutralSeconds?: number;
+}
+
 export interface LiveStatusRow {
   userId: string;
   userName: string;

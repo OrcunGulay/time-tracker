@@ -6,8 +6,9 @@
  */
 import { config } from '../config.js';
 import { query, queryOne } from '../db/pool.js';
-import { hoursFromSeconds, round2, zonedDayRange } from '../lib/time.js';
+import { hoursFromSeconds, overlapSeconds, round2, secondsBetween, zonedDayRange } from '../lib/time.js';
 import { computeProductivityScore } from './productivity.service.js';
+import * as sessionRepo from '../repositories/session.repo.js';
 import type { PayrollLine } from '../types/api.js';
 
 export interface PayrollQuery {
@@ -57,60 +58,86 @@ interface PayrollRawRow {
 export async function buildPayrollLines(input: PayrollQuery): Promise<PayrollLine[]> {
   if (input.userIds !== 'all' && input.userIds.length === 0) return [];
   const { from, to } = periodBounds(input);
-  const filter = input.userIds === 'all' ? '' : 'AND u.id = ANY($3::uuid[])';
-  const values: unknown[] = [from, to];
-  if (input.userIds !== 'all') values.push(input.userIds);
 
-  const { rows } = await query<PayrollRawRow>(
-    `SELECT
-       u.id                       AS "userId",
-       u.name                     AS "userName",
-       u.email                    AS "email",
-       u.hourly_rate::float8      AS "hourlyRate",
-       u.currency                 AS "currency",
-       -- Odenebilir = toplam - bosluk - silinen blok + "calisilmis say" kredisi (yalnizca reddedilmemis oturumlar)
-       coalesce(sum(CASE WHEN s.status <> 'rejected'
-         THEN GREATEST(s.total_duration - s.idle_duration - s.deducted_seconds + s.credited_seconds, 0) ELSE 0 END), 0)::int AS "payableSeconds",
-       coalesce(sum(CASE WHEN s.status = 'approved'
-         THEN GREATEST(s.total_duration - s.idle_duration - s.deducted_seconds + s.credited_seconds, 0) ELSE 0 END), 0)::int AS "approvedSeconds",
-       coalesce(sum(CASE WHEN s.status IN ('stopped', 'active')
-         THEN GREATEST(s.total_duration - s.idle_duration - s.deducted_seconds + s.credited_seconds, 0) ELSE 0 END), 0)::int AS "unapprovedSeconds",
-       count(s.id)::int           AS "sessionCount",
-       coalesce(sum(s.productive_seconds), 0)::int   AS "productiveSeconds",
-       coalesce(sum(s.unproductive_seconds), 0)::int AS "unproductiveSeconds",
-       coalesce(sum(s.neutral_seconds), 0)::int      AS "neutralSeconds",
-       coalesce(sum(s.idle_duration), 0)::int        AS "idleSeconds",
-       coalesce(sum(s.deducted_seconds), 0)::int     AS "deductedSeconds"
-     FROM users u
-     JOIN sessions s ON s.user_id = u.id
-     WHERE s.status <> 'rejected'
-       AND s.start_time >= $1
-       AND s.start_time < $2
-       ${filter}
-     GROUP BY u.id, u.name, u.email, u.hourly_rate, u.currency
-     ORDER BY u.name ASC`,
-    values,
+  const usersRes = await query<{
+    id: string;
+    name: string;
+    email: string;
+    hourlyRate: number;
+    currency: string;
+  }>(
+    input.userIds === 'all'
+      ? `SELECT id, name, email, hourly_rate::float8 AS "hourlyRate", currency FROM users ORDER BY name ASC`
+      : `SELECT id, name, email, hourly_rate::float8 AS "hourlyRate", currency FROM users WHERE id = ANY($1::uuid[]) ORDER BY name ASC`,
+    input.userIds === 'all' ? [] : [input.userIds],
   );
 
-  return rows.map((r) => {
-    const payableHours = hoursFromSeconds(r.payableSeconds);
-    const hourlyRate = Number(r.hourlyRate) || 0;
-    return {
-      userId: r.userId,
-      userName: r.userName,
-      email: r.email,
-      currency: r.currency || 'TRY',
+  const userIdsList = usersRes.rows.map((u) => u.id);
+  const sessions = await sessionRepo.listSessionsInRange(from, to, userIdsList);
+  const nonRejectedSessions = sessions.filter((s) => s.status !== 'rejected');
+
+  const sessionByUser = new Map<string, typeof nonRejectedSessions>();
+  for (const s of nonRejectedSessions) {
+    const list = sessionByUser.get(s.userId) ?? [];
+    list.push(s);
+    sessionByUser.set(s.userId, list);
+  }
+
+  const lines: PayrollLine[] = [];
+  for (const u of usersRes.rows) {
+    const userSessions = sessionByUser.get(u.id);
+    if (!userSessions || userSessions.length === 0) continue;
+
+    let payableSeconds = 0;
+    let approvedSeconds = 0;
+    let unapprovedSeconds = 0;
+    let sessionCount = 0;
+
+    for (const s of userSessions) {
+      const sessionEnd = s.endTime ?? new Date(s.startTime.getTime() + Math.max(s.totalDuration, 1) * 1000);
+      const daySeconds = overlapSeconds(s.startTime, sessionEnd, from, to);
+      if (daySeconds <= 0) continue;
+      const wallClock = Math.max(1, secondsBetween(s.startTime, sessionEnd));
+      const ratio = Math.min(1, daySeconds / wallClock);
+
+      const sessionTotal = s.totalDuration > 0 ? Math.round(s.totalDuration * ratio) : daySeconds;
+      const sessionIdle = Math.round(s.idleDuration * ratio);
+      const sessionDeducted = Math.round(s.deductedSeconds * ratio);
+      const sessionCredited = Math.round(s.creditedSeconds * ratio);
+      const sessionPayable = Math.max(0, sessionTotal - sessionIdle - sessionDeducted + sessionCredited);
+
+      payableSeconds += sessionPayable;
+      if (s.status === 'approved') {
+        approvedSeconds += sessionPayable;
+      } else {
+        unapprovedSeconds += sessionPayable;
+      }
+      sessionCount += 1;
+    }
+
+    if (sessionCount === 0) continue;
+
+    const payableHours = hoursFromSeconds(payableSeconds);
+    const hourlyRate = Number(u.hourlyRate) || 0;
+
+    lines.push({
+      userId: u.id,
+      userName: u.name,
+      email: u.email,
+      currency: u.currency || 'TRY',
       hourlyRate,
       periodStart: input.periodStart,
       periodEnd: input.periodEnd,
-      payableSeconds: r.payableSeconds,
+      payableSeconds,
       payableHours,
       amount: round2(payableHours * hourlyRate),
-      sessionCount: r.sessionCount,
-      approvedSeconds: r.approvedSeconds,
-      unapprovedSeconds: r.unapprovedSeconds,
-    } satisfies PayrollLine;
-  });
+      sessionCount,
+      approvedSeconds,
+      unapprovedSeconds,
+    } satisfies PayrollLine);
+  }
+
+  return lines;
 }
 
 export interface PayrollDetailRow extends PayrollLine {
@@ -144,7 +171,7 @@ export async function buildPayrollDetail(input: PayrollQuery): Promise<PayrollDe
             coalesce(sum(s.deducted_seconds), 0)::int AS "deductedSeconds"
      FROM sessions s
      WHERE s.status <> 'rejected'
-       AND s.start_time >= $1 AND s.start_time < $2
+       AND s.start_time < $2 AND coalesce(s.end_time, now()) > $1
        ${filter}
      GROUP BY s.user_id`,
     values,

@@ -31,7 +31,7 @@ export default async function payrollRoutes(app: FastifyInstance): Promise<void>
     const user = currentUser(request);
     const q = request.query as Record<string, string | undefined>;
     const period = resolvePeriod(q, user.timezone);
-    const lines = await payrollService.buildPayrollDetail({ ...period, userIds: [user.id] });
+    const lines = await payrollService.buildPayrollDetail({ ...period, userIds: [user.id], timezone: user.timezone });
     return {
       ...period,
       items: lines,
@@ -45,7 +45,7 @@ export default async function payrollRoutes(app: FastifyInstance): Promise<void>
     const q = request.query as Record<string, string | undefined>;
     const period = resolvePeriod(q, user.timezone);
     const { userIds } = await resolveReportScope(user, q.userId);
-    const items = await payrollService.buildPayrollDetail({ ...period, userIds });
+    const items = await payrollService.buildPayrollDetail({ ...period, userIds, timezone: user.timezone });
 
     return {
       ...period,
@@ -62,7 +62,7 @@ export default async function payrollRoutes(app: FastifyInstance): Promise<void>
     const q = request.query as Record<string, string | undefined>;
     const period = resolvePeriod(q, user.timezone);
     const { userIds } = await resolveReportScope(user, q.userId);
-    const rows = await payrollService.buildPayrollDetail({ ...period, userIds });
+    const rows = await payrollService.buildPayrollDetail({ ...period, userIds, timezone: user.timezone });
     const stamp = `${period.periodStart}_${period.periodEnd}`;
 
     if (q.format === 'pdf') {
@@ -116,7 +116,7 @@ export default async function payrollRoutes(app: FastifyInstance): Promise<void>
     };
     const period = resolvePeriod({ ...q, ...body }, user.timezone);
     const { userIds } = await resolveReportScope(user, body.userId);
-    const rows = await payrollService.buildPayrollDetail({ ...period, userIds });
+    const rows = await payrollService.buildPayrollDetail({ ...period, userIds, timezone: user.timezone });
     const issued = await payrollService.issuePayrollRuns(rows, user.id);
     await auditRepo.insertAudit({
       actorId: user.id,

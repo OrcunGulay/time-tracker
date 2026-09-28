@@ -21,6 +21,7 @@ import type {
   MonitorStatus,
   ProductivityCategory,
   TimelineSlice,
+  TimelineSummary,
 } from '../types/api.js';
 
 /** Agent ornekleme araligi (saniye) - "cevrimdisi" esiginde kullanilir. */
@@ -117,7 +118,7 @@ export async function dailyReport(input: {
     let lastAt: Date | null = null;
 
     for (const s of userSessions) {
-      const sessionEnd = s.endTime ?? new Date();
+      const sessionEnd = s.endTime ?? new Date(s.startTime.getTime() + Math.max(s.totalDuration, 1) * 1000);
       // Gece yarisini asan oturumlarda yalnizca o gune denk gelen kisim sayilir.
       // `sessions.total_duration` orneklerden birikmis SUREDIR (duvar saati degil),
       // bu nedenle gun icindeki pay, duvar saati orani ile olceklenir.
@@ -297,7 +298,7 @@ export async function timelineForUser(input: {
 }): Promise<{
   date: string;
   slots: TimelineSlice[];
-  summary: ReturnType<typeof summarizeTimeline>;
+  summary: TimelineSummary;
 }> {
   const user = await userRepo.findById(input.userId);
   const zone = input.timezone ?? user?.timezone ?? config.timezone;
@@ -346,7 +347,51 @@ export async function timelineForUser(input: {
     slotMinutes: input.slotMinutes ?? 5,
   });
 
-  return { date: input.date, slots, summary: summarizeTimeline(slots) };
+  // Tam saniye hesaplamasi (Payroll ve Daily Report ile birebir esit oturum ve formul):
+  const nonRejectedSessions = sessions.filter((s) => s.status !== 'rejected');
+  let trackedSeconds = 0;
+  let idleSeconds = 0;
+  let deductedSeconds = 0;
+  let creditedSeconds = 0;
+  let productiveSeconds = 0;
+  let unproductiveSeconds = 0;
+  let neutralSeconds = 0;
+
+  for (const s of nonRejectedSessions) {
+    const sessionEnd = s.endTime ?? new Date(s.startTime.getTime() + Math.max(s.totalDuration, 1) * 1000);
+    const daySeconds = overlapSeconds(s.startTime, sessionEnd, start, end);
+    if (daySeconds <= 0) continue;
+    const wallClock = Math.max(1, secondsBetween(s.startTime, sessionEnd));
+    const ratio = Math.min(1, daySeconds / wallClock);
+
+    trackedSeconds += Math.round((s.totalDuration > 0 ? s.totalDuration : daySeconds) * ratio);
+    idleSeconds += Math.round(s.idleDuration * ratio);
+    deductedSeconds += Math.round(s.deductedSeconds * ratio);
+    creditedSeconds += Math.round(s.creditedSeconds * ratio);
+    productiveSeconds += Math.round(s.productiveSeconds * ratio);
+    unproductiveSeconds += Math.round(s.unproductiveSeconds * ratio);
+    neutralSeconds += Math.round(s.neutralSeconds * ratio);
+  }
+
+  const payableSeconds = Math.max(0, trackedSeconds - idleSeconds - deductedSeconds + creditedSeconds);
+  const activeSeconds = Math.max(0, trackedSeconds - idleSeconds);
+
+  return {
+    date: input.date,
+    slots,
+    summary: {
+      ...summarizeTimeline(slots),
+      totalSeconds: trackedSeconds,
+      trackedSeconds,
+      activeSeconds,
+      idleSeconds,
+      deductedSeconds,
+      payableSeconds,
+      unproductiveSeconds,
+      productiveSeconds,
+      neutralSeconds,
+    },
+  };
 }
 
 // -------------------------------------------------------------- usage reports

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS arka plan servisi (silent mod).
+
+  Kurulum:
+    1. Projeyi /opt/timetracker-agent altina kopyalayin
+    2. cp agent/service/com.timetracker.agent.plist ~/Library/LaunchAgents/
+    3. Kimlik bilgisi: ~/Library/LaunchAgents/com.timetracker.agent.env icine
+         TT_PASSWORD=...
+       yazip chmod 600 uygulayin ve asagidaki EnvironmentFile satirini acin.
+    4. launchctl load ~/Library/LaunchAgents/com.timetracker.agent.plist
+    5. launchctl start com.timetracker.agent
+
+  NOT: silent modda da ekran goruntusu icin macOS'un "Ekran Kaydi" ve URL
+  takibi icin "Erisilebilirlik" izinlerinin bu ikiliye verilmesi gerekir.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.timetracker.agent</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/timetracker-agent/.venv/bin/python</string>
+        <string>-m</string>
+        <string>tt_agent</string>
+        <string>--mode</string>
+        <string>silent</string>
+        <string>--config</string>
+        <string>/opt/timetracker-agent/config.yaml</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/opt/timetracker-agent</string>
+
+    <!-- Boot aninda ve coktugunde tekrar baslat -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>15</integer>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/timetracker-agent.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/timetracker-agent.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+        <key>PYTHONPATH</key>
+        <string>/opt/timetracker-agent</string>
+    </dict>
+
+    <!-- Gizli bilgiler icin (opsiyonel):
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>TT_PASSWORD</key>
+        <string>GUCLU_PAROLA</string>
+    </dict>
+    -->
+</dict>
+</plist>

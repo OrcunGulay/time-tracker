@@ -1,0 +1,20 @@
+# --- Cekirdek (zorunlu) ---
+pynput>=1.7.6            # Klavye/fare sayaclari (ICERIK DEGIL, yalnizca sayi)
+mss>=9.0.1               # Coklu monitor ekran goruntusu
+Pillow>=10.0.0           # WebP/JPEG sikistirma + blur
+psutil>=5.9.5            # Aktif process tespiti
+PyYAML>=6.0              # config.yaml
+pystray>=0.19.4          # Sistem tepsisi ikonu (interactive mod)
+
+# --- Platform ozel ---
+# macOS: AppKit/Foundation icin Cocoa semsiyesi kullanilir ("pyobjc-framework-AppKit"
+# adinda bir paket YOKTUR). Python 3.10+ ile guncel pyobjc surumleri kurulur;
+# Python 3.9 icin pip otomatik olarak 9.2 surumune duser.
+pyobjc-framework-Cocoa>=9.2; sys_platform == "darwin"
+pyobjc-framework-Quartz>=9.2; sys_platform == "darwin"
+pyobjc-framework-ApplicationServices>=9.2; sys_platform == "darwin"
+pywin32>=306; sys_platform == "win32"
+pygetwindow>=0.0.9; sys_platform == "win32"
+
+# --- Gelistirme ---
+# pytest>=7.4.0

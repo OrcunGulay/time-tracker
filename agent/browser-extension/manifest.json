@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Zaman Takip - Aktif Sekme",
+  "version": "1.0.0",
+  "description": "Aktif sekmenin URL'ini yerel takip agent'ina bildirir (localhost, sayfa icerigi okunmaz).",
+  "permissions": ["tabs", "activeTab", "alarms", "storage"],
+  "host_permissions": ["http://127.0.0.1:17873/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Zaman Takip"
+  },
+  "minimum_chrome_version": "102"
+}

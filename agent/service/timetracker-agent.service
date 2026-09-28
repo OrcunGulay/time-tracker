@@ -1,0 +1,39 @@
+# Linux systemd servisi (silent mod).
+#
+# Kurulum:
+#   1. sudo mkdir -p /opt/timetracker-agent && sudo cp -r agent/* /opt/timetracker-agent/
+#   2. sudo cp agent/service/timetracker-agent.service /etc/systemd/system/
+#   3. sudo install -m 600 /dev/null /etc/timetracker/agent.env
+#      echo 'TT_PASSWORD=GUCLU_PAROLA' | sudo tee /etc/timetracker/agent.env
+#   4. sudo systemctl daemon-reload && sudo systemctl enable --now timetracker-agent
+#
+# ONEMLI (X11/Wayland):
+#   Ekran goruntusu ve aktif pencere tespiti icin DISPLAY/XAUTHORITY gerekir.
+#   /etc/timetracker/agent.env icine ekleyin:
+#       DISPLAY=:0
+#       XAUTHORITY=/home/<kullanici>/.Xauthority
+#   Wayland altinda ekran goruntusu icin XWayland veya portal tabanli
+#   bir yakalama arka plani (orn. gnome-screenshot) gerekebilir.
+
+[Unit]
+Description=Zaman Takip Desktop Agent (aktivite & ekran goruntusu)
+Documentation=file:/opt/timetracker-agent/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=/opt/timetracker-agent
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/opt/timetracker-agent
+EnvironmentFile=-/etc/timetracker/agent.env
+ExecStart=/opt/timetracker-agent/.venv/bin/python -m tt_agent --mode silent --config /opt/timetracker-agent/config.yaml
+Restart=always
+RestartSec=15
+# Kaynak sinirlamasi: agent hafif olmali
+CPUQuota=25%
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

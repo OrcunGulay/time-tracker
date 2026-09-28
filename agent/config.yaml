@@ -1,0 +1,63 @@
+# =============================================================================
+#  Zaman Takip Agent - ornek yapilandirma
+#  Kopyalayin:  cp config.example.yaml config.yaml
+#  Parolayi dosyaya YAZMAYIN: export TT_PASSWORD="..." kullanin.
+# =============================================================================
+
+# ---- Sunucu ----
+server_url: "http://localhost:4000"
+verify_tls: true
+request_timeout: 15
+
+# ---- Kimlik (ikisinden biri) ----
+# 1) Yonetim panelinden uretilen agent API anahtari (silent/servis kurulumu icin onerilir)
+# api_key: "tt_xxxxxxxxxxxxxxxx"
+# 2) E-posta + parola (parola TT_PASSWORD ortam degiskeninden okunur)
+email: "tsts4695@gmail.com"
+
+# ---- Calisma modu ----
+# interactive : tepsi ikonu, mesai baslat/durdur, proje-gorev secimi
+# silent      : arka plan servisi (OS boot), UI yok, dogrudan loglar
+mode: interactive
+auto_start_session: true
+# force_project_id: "00000000-0000-0000-0000-000000000000"
+# force_task_id: "00000000-0000-0000-0000-000000000000"
+
+# ---- Ornekleme (saniye) ----
+sample_interval: 20 # aktivite ornegi (klavye/fare sayaclari + pencere)
+heartbeat_interval: 30 # canli durum
+idle_threshold: 180 # 3 dk giris yoksa "bosta"
+sync_interval: 30 # kuyruk bosaltma
+count_mouse_move_as_activity: true
+
+# ---- Ekran goruntusu ----
+screenshots_enabled: true
+screenshot_block_seconds: 600 # her 10 dk'lik blokta RASTGELE bir saniye
+screenshot_jitter: true
+capture_all_monitors: true
+monitors_allowlist: [] # ornek: [0, 1]
+image_format: webp # webp | jpeg | png
+image_quality: 65
+blur_enabled: false # gizlilik icin bulaniklastirma
+blur_radius: 12
+max_image_width: 1920
+
+# ---- URL seviyesinde web takibi ----
+url_tracking: true
+browser_url_port: 17873 # tarayici eklentisi bu portu kullanir
+ax_url_tracking: true # macOS Accessibility API denemesi
+
+# ---- Popup / bildirim ----
+notifications: true
+idle_popup: true # "bu sureyi say / sil" diyalogu
+idle_popup_min_seconds: 300
+distraction_popup: true # "Hala calisiyor musunuz?"
+distraction_threshold: 60 # uretken olmayan sitede kesintisiz sure
+
+# ---- Veri ----
+data_dir: "~/.timetracker-agent"
+max_queue_mb: 200
+log_level: INFO
+
+# ---- Yonetim paneli (tepsi menusunden acilir) ----
+dashboard_url: "http://localhost:3000"

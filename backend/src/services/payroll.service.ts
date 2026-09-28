@@ -68,11 +68,12 @@ export async function buildPayrollLines(input: PayrollQuery): Promise<PayrollLin
        u.email                    AS "email",
        u.hourly_rate::float8      AS "hourlyRate",
        u.currency                 AS "currency",
-       -- Odenebilir = toplam - bosluk - silinen blok + "calisilmis say" kredisi
-       coalesce(sum(GREATEST(s.total_duration - s.idle_duration - s.deducted_seconds + s.credited_seconds, 0)), 0)::int AS "payableSeconds",
+       -- Odenebilir = toplam - bosluk - silinen blok + "calisilmis say" kredisi (yalnizca reddedilmemis oturumlar)
+       coalesce(sum(CASE WHEN s.status <> 'rejected'
+         THEN GREATEST(s.total_duration - s.idle_duration - s.deducted_seconds + s.credited_seconds, 0) ELSE 0 END), 0)::int AS "payableSeconds",
        coalesce(sum(CASE WHEN s.status = 'approved'
          THEN GREATEST(s.total_duration - s.idle_duration - s.deducted_seconds + s.credited_seconds, 0) ELSE 0 END), 0)::int AS "approvedSeconds",
-       coalesce(sum(CASE WHEN s.status = 'stopped'
+       coalesce(sum(CASE WHEN s.status IN ('stopped', 'active')
          THEN GREATEST(s.total_duration - s.idle_duration - s.deducted_seconds + s.credited_seconds, 0) ELSE 0 END), 0)::int AS "unapprovedSeconds",
        count(s.id)::int           AS "sessionCount",
        coalesce(sum(s.productive_seconds), 0)::int   AS "productiveSeconds",
@@ -82,8 +83,7 @@ export async function buildPayrollLines(input: PayrollQuery): Promise<PayrollLin
        coalesce(sum(s.deducted_seconds), 0)::int     AS "deductedSeconds"
      FROM users u
      JOIN sessions s ON s.user_id = u.id
-     WHERE u.is_active = true
-       AND s.status <> 'active'
+     WHERE s.status <> 'rejected'
        AND s.start_time >= $1
        AND s.start_time < $2
        ${filter}
@@ -94,17 +94,18 @@ export async function buildPayrollLines(input: PayrollQuery): Promise<PayrollLin
 
   return rows.map((r) => {
     const payableHours = hoursFromSeconds(r.payableSeconds);
+    const hourlyRate = Number(r.hourlyRate) || 0;
     return {
       userId: r.userId,
       userName: r.userName,
       email: r.email,
-      currency: r.currency,
-      hourlyRate: r.hourlyRate,
+      currency: r.currency || 'TRY',
+      hourlyRate,
       periodStart: input.periodStart,
       periodEnd: input.periodEnd,
       payableSeconds: r.payableSeconds,
       payableHours,
-      amount: round2(payableHours * r.hourlyRate),
+      amount: round2(payableHours * hourlyRate),
       sessionCount: r.sessionCount,
       approvedSeconds: r.approvedSeconds,
       unapprovedSeconds: r.unapprovedSeconds,
@@ -142,7 +143,7 @@ export async function buildPayrollDetail(input: PayrollQuery): Promise<PayrollDe
             coalesce(sum(s.idle_duration), 0)::int AS "idleSeconds",
             coalesce(sum(s.deducted_seconds), 0)::int AS "deductedSeconds"
      FROM sessions s
-     WHERE s.status <> 'active'
+     WHERE s.status <> 'rejected'
        AND s.start_time >= $1 AND s.start_time < $2
        ${filter}
      GROUP BY s.user_id`,

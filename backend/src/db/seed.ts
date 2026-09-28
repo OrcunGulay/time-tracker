@@ -53,7 +53,7 @@ interface DemoUserSpec {
 }
 
 const PEOPLE: DemoUserSpec[] = [
-  { name: 'Sistem Yoneticisi', email: 'admin@localhost', role: 'admin', department: 'Yonetim', hourlyRate: 0, password: 'Admin123!' },
+  { name: 'Sistem Yoneticisi', email: 'admin@localhost', role: 'admin', department: 'Yonetim', hourlyRate: 750, password: 'Admin123!' },
   { name: 'Deniz Yilmaz', email: 'deniz@localhost', role: 'manager', department: 'Yazilim', hourlyRate: 850, password: 'Deniz123!' },
   { name: 'Ada Kaya', email: 'ada@localhost', role: 'employee', department: 'Yazilim', hourlyRate: 600, password: 'Ada123!' },
   { name: 'Mert Demir', email: 'mert@localhost', role: 'employee', department: 'Tasarim', hourlyRate: 550, password: 'Mert123!' },
@@ -92,6 +92,9 @@ async function seedBase(): Promise<Map<string, string>> {
     const existing = await userRepo.findByEmail(person.email);
     if (existing) {
       ids.set(person.email, existing.id);
+      if (person.hourlyRate > 0 && (existing.hourlyRate === 0 || !existing.isActive)) {
+        await userRepo.updateUser(existing.id, { hourlyRate: person.hourlyRate, isActive: true });
+      }
       continue;
     }
     const created = await userRepo.createUser({

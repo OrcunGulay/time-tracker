@@ -105,7 +105,7 @@ export default async function adminRoutes(app: FastifyInstance): Promise<void> {
         role: body.role ?? 'employee',
         department: body.department ?? null,
         timezone: body.timezone ?? 'Europe/Istanbul',
-        hourlyRate: body.hourlyRate ?? 0,
+        hourlyRate: body.hourlyRate ?? 500,
         currency: body.currency ?? 'TRY',
       });
       await auditRepo.insertAudit({

@@ -5,7 +5,7 @@
 # =============================================================================
 
 # ---- Sunucu ----
-server_url: "http://localhost:4000"
+server_url: "https://time-tracker-api-asll.onrender.com"
 verify_tls: true
 request_timeout: 15
 
@@ -31,7 +31,7 @@ sync_interval: 30 # kuyruk bosaltma
 count_mouse_move_as_activity: true
 
 # ---- Ekran goruntusu ----
-screenshots_enabled: true
+screenshots_enabled: false
 screenshot_block_seconds: 600 # her 10 dk'lik blokta RASTGELE bir saniye
 screenshot_jitter: true
 capture_all_monitors: true

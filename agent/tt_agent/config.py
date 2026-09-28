@@ -34,7 +34,7 @@ class Config:
     """Agent'in tum davranisini belirleyen ayarlar."""
 
     # ---- Sunucu / kimlik ----
-    server_url: str = "http://localhost:4000"
+    server_url: str = "https://time-tracker-api-asll.onrender.com"
     # Yontem 1: e-posta + parola ile JWT alir (interactive mod icin uygun)
     email: Optional[str] = None
     password: Optional[str] = None
@@ -60,7 +60,7 @@ class Config:
     count_mouse_move_as_activity: bool = True
 
     # ---- Ekran goruntusu ----
-    screenshots_enabled: bool = True
+    screenshots_enabled: bool = False
     screenshot_block_seconds: int = 600     # her 10 dk'lik blok
     screenshot_jitter: bool = True          # blok icinde rastgele saniye
     capture_all_monitors: bool = True

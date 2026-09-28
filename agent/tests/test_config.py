@@ -13,11 +13,11 @@ from tt_agent.config import Config, load_config  # noqa: E402
 class TestDefaults(unittest.TestCase):
     def test_varsayilanlar(self):
         config = Config()
-        self.assertEqual(config.server_url, "http://localhost:4000")
+        self.assertEqual(config.server_url, "https://time-tracker-api-asll.onrender.com")
         self.assertEqual(config.mode, "interactive")
         self.assertEqual(config.idle_threshold, 180)
         self.assertEqual(config.screenshot_block_seconds, 600)
-        self.assertTrue(config.screenshots_enabled)
+        self.assertFalse(config.screenshots_enabled)
 
     def test_server_url_sonundaki_slash_temizlenir(self):
         self.assertEqual(Config(server_url="http://x:4000/").server_url, "http://x:4000")

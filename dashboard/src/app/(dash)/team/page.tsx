@@ -58,7 +58,7 @@ function UsersTab({ isAdmin }: { isAdmin: boolean }) {
     password: '',
     role: 'employee',
     department: '',
-    hourlyRate: '0',
+    hourlyRate: '600',
   });
   const [message, setMessage] = useState<string | null>(null);
   const [agentKey, setAgentKey] = useState<string | null>(null);
@@ -75,10 +75,10 @@ function UsersTab({ isAdmin }: { isAdmin: boolean }) {
         password: form.password,
         role: form.role,
         department: form.department || null,
-        hourlyRate: Number(form.hourlyRate) || 0,
+        hourlyRate: Number(form.hourlyRate) || 600,
       });
       setMessage(`${form.email} olusturuldu.`);
-      setForm({ name: '', email: '', password: '', role: 'employee', department: '', hourlyRate: '0' });
+      setForm({ name: '', email: '', password: '', role: 'employee', department: '', hourlyRate: '600' });
       users.refresh();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Kullanici olusturulamadi');
@@ -156,7 +156,7 @@ function UsersTab({ isAdmin }: { isAdmin: boolean }) {
                 onChange={(e) => setForm({ ...form, department: e.target.value })}
               />
             </Field>
-            <Field label="Saatlik ucret">
+            <Field label="Saatlik ucret (TRY)">
               <Input
                 type="number"
                 min={0}
@@ -204,7 +204,32 @@ function UsersTab({ isAdmin }: { isAdmin: boolean }) {
                 </td>
                 <td className="td text-slate-600">{row.department ?? '-'}</td>
                 <td className="td">
-                  <span className="text-slate-700">{formatMoney(row.hourlyRate, row.currency)}</span>
+                  {isAdmin ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={0}
+                        step="10"
+                        defaultValue={row.hourlyRate}
+                        key={`${row.id}-${row.hourlyRate}`}
+                        onBlur={(e) => {
+                          const val = Number(e.target.value);
+                          if (!isNaN(val) && val !== row.hourlyRate) {
+                            updateUser(row, { hourlyRate: val });
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            (e.target as HTMLInputElement).blur();
+                          }
+                        }}
+                        className="w-24 rounded border border-slate-200 px-2 py-1 text-sm font-medium text-slate-700 focus:border-brand-500 focus:outline-none"
+                      />
+                      <span className="text-xs text-slate-500">{row.currency}</span>
+                    </div>
+                  ) : (
+                    <span className="text-slate-700">{formatMoney(row.hourlyRate, row.currency)}</span>
+                  )}
                 </td>
                 <td className="td">
                   {row.hasAgentKey ? <Badge tone="green">Tanimli</Badge> : <Badge>Yok</Badge>}

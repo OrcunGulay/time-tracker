@@ -31,6 +31,9 @@ agent-data/
 *.sqlite-journal
 captures/
 
+# storage
+.minio-data/
+
 # os / editor
 .DS_Store
 Thumbs.db

@@ -52,13 +52,14 @@ interface RequestOptions {
 
 async function rawRequest(path: string, options: RequestOptions, token?: string | null): Promise<Response> {
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  if (options.body !== undefined && !isFormData) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
 
   return fetch(`${API_URL}${path}`, {
     method: options.method ?? 'GET',
     headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    body: isFormData ? (options.body as FormData) : options.body !== undefined ? JSON.stringify(options.body) : undefined,
     signal: options.signal,
   });
 }
@@ -372,6 +373,22 @@ const coachPayrollApi = {
       method: 'PUT',
       body,
     }),
+
+  uploadArchive: (file: File, month?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (month) formData.append('month', month);
+    return request<{
+      ok: boolean;
+      message: string;
+      syncedCount: number;
+      errorCount: number;
+      data: CoachPayrollSummary;
+    }>(`/api/v1/coach-payroll/upload-archive${query({ month })}`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
 };
 
 export const api = {

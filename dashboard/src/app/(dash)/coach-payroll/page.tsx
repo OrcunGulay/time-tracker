@@ -1,11 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { api } from '@/lib/api';
-import { Badge, Button, Card, EmptyState, ErrorBanner, Field, Input, Select, Spinner, StatCard, Table } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, ErrorBanner, Field, Input, ProgressBar, Select, Spinner, StatCard, Table } from '@/components/ui';
 import { useAuthUser } from '@/hooks/useAuth';
 import { useApi } from '@/hooks/useApi';
-import { formatMoney } from '@/lib/format';
+import { formatBytes, formatMoney } from '@/lib/format';
 import type { CoachMeeting, CoachPayrollRecord, CoachRate } from '@/lib/types';
 
 const MONTH_OPTIONS = [
@@ -36,6 +36,13 @@ export default function CoachPayrollPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'ok' | 'warning'>('all');
   const [expandedCoachId, setExpandedCoachId] = useState<string | null>(null);
+
+  // Sürükle - Bırak (Dropzone) Yükleme Durumu
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadedFileMeta, setUploadedFileMeta] = useState<{ name: string; size: number } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Senkronizasyon ve Bildirim Durumu
   const [syncing, setSyncing] = useState(false);
@@ -86,6 +93,45 @@ export default function CoachPayrollPage() {
       setActionError(err instanceof Error ? err.message : 'Google Drive senkronizasyonu başarısız oldu.');
     } finally {
       setSyncing(false);
+    }
+  };
+
+  // Doğrudan ZIP veya Excel Dosyası Yükleme
+  const handleFileUpload = async (file: File) => {
+    const isZip = file.name.toLowerCase().endsWith('.zip');
+    const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
+
+    if (!isZip && !isExcel) {
+      setActionError('Lütfen geçerli bir ZIP arşivi (.zip) veya Excel çalışma kitabı (.xlsx) seçin.');
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(20);
+    setUploadedFileMeta({ name: file.name, size: file.size });
+    setActionError(null);
+    setNotice(null);
+
+    const timer = setInterval(() => {
+      setUploadProgress((prev) => (prev < 85 ? prev + 15 : prev));
+    }, 250);
+
+    try {
+      const res = await api.coachPayroll.uploadArchive(file, selectedMonth);
+      clearInterval(timer);
+      setUploadProgress(100);
+      setNotice(res.message);
+      refresh();
+    } catch (err) {
+      clearInterval(timer);
+      setActionError(err instanceof Error ? err.message : 'Dosya yükleme ve analiz işlemi başarısız oldu.');
+    } finally {
+      setTimeout(() => {
+        setUploading(false);
+        setUploadProgress(0);
+        setUploadedFileMeta(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }, 700);
     }
   };
 
@@ -311,6 +357,95 @@ export default function CoachPayrollPage() {
           </div>
         </div>
       </Card>
+
+      {/* Sürükle - Bırak (Dropzone) Dosya Yükleme Alanı */}
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+          const file = e.dataTransfer.files?.[0];
+          if (file) handleFileUpload(file);
+        }}
+        className={`group relative overflow-hidden rounded-2xl border-2 border-dashed p-6 text-center transition-all ${
+          isDragging
+            ? 'border-indigo-500 bg-indigo-50/70 scale-[1.01] shadow-md ring-4 ring-indigo-100'
+            : 'border-slate-300/80 bg-white/80 hover:border-indigo-400 hover:bg-slate-50/80 shadow-sm'
+        }`}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".zip,.xlsx,.xls"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleFileUpload(file);
+          }}
+        />
+
+        {uploading ? (
+          <div className="mx-auto max-w-md space-y-3 py-2">
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+              <span className="flex items-center gap-2 truncate">
+                <svg className="h-4 w-4 animate-spin text-indigo-600 shrink-0" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+                <span className="truncate">{uploadedFileMeta?.name}</span>
+              </span>
+              <span className="text-slate-500">
+                {uploadedFileMeta?.size ? formatBytes(uploadedFileMeta.size) : ''} · %{uploadProgress}
+              </span>
+            </div>
+            <ProgressBar value={uploadProgress} max={100} tone="brand" />
+            <p className="text-xs text-indigo-600 font-medium animate-pulse">
+              Arşiv bellek üzerinde açılıyor, koç tabloları ve Zoom toplantıları taranıyor...
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-2">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 shadow-inner group-hover:scale-110 transition-transform">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-800">
+                Drive'dan indirdiğiniz <span className="text-indigo-600 font-bold">Koçlar.zip</span> dosyasını buraya sürükleyin veya dosya seçin
+              </p>
+              <p className="mt-1 text-xs text-slate-500 max-w-xl mx-auto">
+                Google Drive'daki ana "Koçlar" klasörünün ZIP arşivini veya tekil koç "İşleyiş Tablosu (.xlsx)" dosyasını doğrudan yükleyin. Bellek üzerinde taranarak hakedişler anında güncellenir.
+              </p>
+            </div>
+            <div className="mt-1 flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-white hover:bg-slate-50 border-slate-300 shadow-sm"
+              >
+                <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                <span>Bilgisayardan Dosya Seç (.zip / .xlsx)</span>
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Bildirim ve Hata Mesajları */}
       {notice && (

@@ -116,3 +116,13 @@ describe('parseWorksheetMeetings', () => {
     assert.equal(firstMeeting.rate, 500);
   });
 });
+
+describe('extractCoachNameFromFilename', () => {
+  it('dosya adindan koc adini dogru cikarir', async () => {
+    const { extractCoachNameFromFilename } = await import('../services/archive-parser.service.js');
+    assert.equal(extractCoachNameFromFilename('İşleyiş Tablosu - Ahmet Yılmaz.xlsx'), 'Ahmet Yılmaz');
+    assert.equal(extractCoachNameFromFilename('Selin Yılmaz - isleyis tablosu.xlsx'), 'Selin Yılmaz');
+    assert.equal(extractCoachNameFromFilename('Can Demir.xlsx'), 'Can Demir');
+  });
+});
+

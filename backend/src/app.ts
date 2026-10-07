@@ -1,5 +1,6 @@
 /** Fastify uygulama fabrikasi (test edilebilirlik icin ayri tutulur). */
 import cors from '@fastify/cors';
+import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { config } from './config.js';
@@ -41,6 +42,12 @@ export async function buildApp(): Promise<FastifyInstance> {
     timeWindow: '1 minute',
     // Test ortaminda limitler devre disi
     global: !config.isTest,
+  });
+
+  await app.register(multipart, {
+    limits: {
+      fileSize: 100 * 1024 * 1024,
+    },
   });
 
   registerAuth(app);

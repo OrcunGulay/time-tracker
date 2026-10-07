@@ -5,10 +5,51 @@
 import type { FastifyInstance } from 'fastify';
 import { currentUser } from '../lib/auth.js';
 import { badRequest } from '../lib/errors.js';
+import * as archiveParserService from '../services/archive-parser.service.js';
 import * as coachPayrollService from '../services/coach-payroll.service.js';
 
 export default async function coachPayrollRoutes(app: FastifyInstance): Promise<void> {
   const staffOnly = app.requireRole('admin', 'manager');
+
+  /**
+   * POST /coach-payroll/upload-archive
+   * Doğrudan ZIP veya Excel dosyası yükleyerek yerel hakediş analizi yapar.
+   */
+  app.post('/coach-payroll/upload-archive', { preHandler: staffOnly }, async (request) => {
+    const data = await request.file();
+    if (!data) {
+      throw badRequest('Lütfen bir ZIP arşivi veya Excel dosyası yükleyin.');
+    }
+
+    const filename = data.filename || 'archive.zip';
+    const buffer = await data.toBuffer();
+
+    const fields = data.fields as Record<string, { value?: string } | undefined>;
+    const q = request.query as Record<string, string | undefined>;
+    const month = fields?.month?.value || q.month;
+
+    if (month && !/^\d{4}-\d{2}$/.test(month)) {
+      throw badRequest('month parametresi YYYY-MM formatında olmalıdır');
+    }
+
+    const isZip = filename.toLowerCase().endsWith('.zip') || data.mimetype.includes('zip');
+    let result;
+    if (isZip) {
+      result = await archiveParserService.parseZipArchive(buffer, month);
+    } else if (filename.toLowerCase().endsWith('.xlsx') || filename.toLowerCase().endsWith('.xls')) {
+      result = await archiveParserService.parseSingleExcelFile(filename, buffer, month);
+    } else {
+      throw badRequest('Desteklenmeyen dosya formatı. Yalnızca .zip veya .xlsx yükleyebilirsiniz.');
+    }
+
+    return {
+      ok: true,
+      message: result.message,
+      syncedCount: result.syncedCount,
+      errorCount: result.errorCount,
+      data: result.summary,
+    };
+  });
 
   /**
    * GET /coach-payroll?month=YYYY-MM

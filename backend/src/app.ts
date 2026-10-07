@@ -7,6 +7,7 @@ import { registerAuth } from './lib/auth.js';
 import { AppError } from './lib/errors.js';
 import adminRoutes from './routes/admin.routes.js';
 import authRoutes from './routes/auth.routes.js';
+import coachPayrollRoutes from './routes/coach-payroll.js';
 import payrollRoutes from './routes/payroll.routes.js';
 import reportRoutes from './routes/reports.routes.js';
 import screenshotRoutes from './routes/screenshots.routes.js';
@@ -130,6 +131,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(reportRoutes, { prefix: '/api/reports' });
   await app.register(adminRoutes, { prefix: '/api/admin' });
   await app.register(payrollRoutes, { prefix: '/api/payroll' });
+  await app.register(coachPayrollRoutes, { prefix: '/api/v1' });
+  await app.register(coachPayrollRoutes, { prefix: '/api' });
 
   return app;
 }

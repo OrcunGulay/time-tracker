@@ -12,6 +12,9 @@ import type {
   AdminUser,
   AppUsageRow,
   CategoryRule,
+  CoachPayrollRecord,
+  CoachPayrollSummary,
+  CoachRate,
   DailyReportRow,
   LiveStatusRow,
   LoginResponse,
@@ -40,7 +43,7 @@ export class ApiError extends Error {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   /** Kimlik dogrulama gerektirmeyen istekler (login). */
   anonymous?: boolean;
@@ -346,12 +349,38 @@ export const adminApi = {
     request<Paged<Record<string, unknown>>>(`/api/admin/audit${query(params)}`),
 };
 
+const coachPayrollApi = {
+  summary: (month?: string) =>
+    request<CoachPayrollSummary>(`/api/v1/coach-payroll${query({ month })}`),
+
+  sync: (month?: string) =>
+    request<{
+      ok: boolean;
+      message: string;
+      syncedCount: number;
+      errorCount: number;
+      data: CoachPayrollSummary;
+    }>('/api/v1/coach-payroll/sync', { method: 'POST', body: { month } }),
+
+  rates: () => request<{ rates: CoachRate[] }>('/api/v1/coach-rates'),
+
+  updateRates: (body: {
+    rates: Array<{ categoryName: string; rate: number; currency?: string; description?: string }>;
+    month?: string;
+  }) =>
+    request<{ ok: boolean; rates: CoachRate[]; recalculated: boolean }>('/api/v1/coach-rates', {
+      method: 'PUT',
+      body,
+    }),
+};
+
 export const api = {
   auth: authApi,
   reports: reportsApi,
   screenshots: screenshotsApi,
   sessions: sessionsApi,
   payroll: payrollApi,
+  coachPayroll: coachPayrollApi,
   admin: adminApi,
 };
 

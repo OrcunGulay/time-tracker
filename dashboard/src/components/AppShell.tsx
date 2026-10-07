@@ -21,6 +21,7 @@ const NAV: NavItem[] = [
   { href: '/usage', label: 'Uygulama Kullanimi', roles: ['admin', 'manager', 'employee'], description: 'Dagilim grafikleri' },
   { href: '/productivity', label: 'Uretkenlik', roles: ['admin', 'manager', 'employee'], description: 'Skor raporu' },
   { href: '/payroll', label: 'Bordro', roles: ['admin', 'manager'], description: 'Maliyet & fatura' },
+  { href: '/coach-payroll', label: 'Koç Ödemeleri', roles: ['admin', 'manager'], description: 'Google Drive & Zoom hakediş' },
   { href: '/team', label: 'Ekip & Ayarlar', roles: ['admin', 'manager'], description: 'Kullanici/proje/kural' },
   { href: '/me', label: 'Kendi Kayitlarim', roles: ['employee'], description: 'Kendi verilerim' },
 ];

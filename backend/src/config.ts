@@ -57,6 +57,11 @@ const schema = z.object({
   PRODUCTIVITY_NEUTRAL_WEIGHT: z.coerce.number().min(0).max(1).default(0),
   IDLE_THRESHOLD_SECONDS: int(180),
   SCREENSHOT_BLOCK_SECONDS: int(600),
+
+  // Google Drive & Koc Hakedis
+  GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().optional().default(''),
+  GOOGLE_PRIVATE_KEY: z.string().optional().default(''),
+  GOOGLE_DRIVE_COACHES_FOLDER_ID: z.string().optional().default(''),
 });
 
 // Test ortami icin guvenli varsayilanlar (src/test/env.mjs de ayni degerleri set eder)
@@ -128,6 +133,11 @@ export const config = {
     neutralWeight: env.PRODUCTIVITY_NEUTRAL_WEIGHT,
     idleThresholdSeconds: env.IDLE_THRESHOLD_SECONDS,
     screenshotBlockSeconds: env.SCREENSHOT_BLOCK_SECONDS,
+  },
+  google: {
+    serviceAccountEmail: env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+    privateKey: env.GOOGLE_PRIVATE_KEY ? env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n') : '',
+    coachesFolderId: env.GOOGLE_DRIVE_COACHES_FOLDER_ID,
   },
 } as const;
 

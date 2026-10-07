@@ -248,3 +248,55 @@ export interface Paginated<T> {
   limit: number;
   offset: number;
 }
+
+// ------------------------------------------------------------- Koc Hakedis Tipleri
+export interface CoachMeeting {
+  id: string;
+  date: string;
+  time?: string;
+  topic: string;
+  category: string;
+  rate: number;
+}
+
+export interface CoachPayrollRecord {
+  id: string;
+  month: string;
+  periodStart: string;
+  periodEnd: string;
+  coachName: string;
+  driveFolderId?: string | null;
+  spreadsheetId?: string | null;
+  spreadsheetName?: string | null;
+  totalMeetings: number;
+  totalAmount: number;
+  categoryBreakdown: Record<string, number>;
+  meetings: CoachMeeting[];
+  hasError: boolean;
+  errorMessage?: string | null;
+  syncedAt: string;
+}
+
+export interface CoachRate {
+  id: string;
+  categoryName: string;
+  rate: number;
+  currency: string;
+  description?: string | null;
+  updatedAt?: string;
+}
+
+export interface CoachPayrollSummary {
+  month: string;
+  periodStart: string;
+  periodEnd: string;
+  periodLabel: string;
+  totalCoaches: number;
+  activeCoaches: number;
+  warningCoaches: number;
+  totalMeetings: number;
+  totalAmount: number;
+  currency: string;
+  items: CoachPayrollRecord[];
+}
+
